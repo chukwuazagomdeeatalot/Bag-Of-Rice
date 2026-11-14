@@ -36,6 +36,8 @@ export function GoogleCallbackPage() {
         setMessage('Google sign-in successful. You are now signed in.');
         setMessageType('success');
 
+        window.history.replaceState({}, document.title, window.location.pathname);
+
         await new Promise((resolve) => setTimeout(resolve, 1500));
         navigate('/', { replace: true });
       } catch (err: unknown) {

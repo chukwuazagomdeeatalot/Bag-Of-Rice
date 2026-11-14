@@ -14,6 +14,7 @@ vi.mock('@/lib/appwrite', () => ({
     updateEmailVerification: vi.fn(),
     createEmailVerificationOTP: vi.fn(),
     updateEmailVerificationOTP: vi.fn(),
+    createOAuth2Token: vi.fn(),
     createRecovery: vi.fn(),
     updateRecovery: vi.fn(),
   },
@@ -29,6 +30,7 @@ import {
   resetPassword,
   sendEmailVerificationOTP,
   verifyEmailOTP,
+  signInWithGoogle,
 } from '@/lib/auth';
 import { account } from '@/lib/appwrite';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -486,5 +488,60 @@ describe('Auth utility functions', () => {
       userId: 'user-1',
       secret: '123456',
     });
+  });
+});
+
+describe('Google OAuth flow', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv('VITE_APP_URL', 'http://localhost:5173');
+    vi.stubGlobal('window', {
+      location: { href: '' },
+    } as any);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('signInWithGoogle calls account.createOAuth2Token with Google provider', async () => {
+    vi.mocked(account.createOAuth2Token).mockReturnValue(undefined);
+
+    await signInWithGoogle();
+
+    expect(vi.mocked(account.createOAuth2Token)).toHaveBeenCalledWith({
+      provider: expect.anything(),
+      success: 'http://localhost:5173/auth/google/callback',
+      failure: 'http://localhost:5173/auth/google/error',
+    });
+  });
+
+  it('signInWithGoogle uses OAuthProvider.Google', async () => {
+    const { OAuthProvider } = await import('appwrite');
+    vi.mocked(account.createOAuth2Token).mockReturnValue(undefined);
+
+    await signInWithGoogle();
+
+    const callArg = vi.mocked(account.createOAuth2Token).mock.calls[0][0] as any;
+    expect(callArg.provider).toBe(OAuthProvider.Google);
+  });
+
+  it('signInWithGoogle navigates to returned OAuth URL', async () => {
+    const oauthUrl = 'https://cloud.appwrite.io/v1/account/tokens/oauth2/google?...';
+    vi.mocked(account.createOAuth2Token).mockReturnValue(oauthUrl);
+
+    await signInWithGoogle();
+
+    expect(window.location.href).toBe(oauthUrl);
+  });
+
+  it('signInWithGoogle does not navigate when createOAuth2Token returns undefined', async () => {
+    vi.mocked(account.createOAuth2Token).mockReturnValue(undefined);
+    const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+    await signInWithGoogle();
+
+    expect(hrefSpy).not.toHaveBeenCalled();
+    hrefSpy.mockRestore();
   });
 });

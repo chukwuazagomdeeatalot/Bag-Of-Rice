@@ -106,9 +106,12 @@ export async function signInWithGoogle(): Promise<void> {
   const appUrl = getAppUrl();
   const successUrl = `${appUrl}/auth/google/callback`;
   const failureUrl = `${appUrl}/auth/google/error`;
-  account.createOAuth2Session({
+  const result = account.createOAuth2Token({
     provider: OAuthProvider.Google,
     success: successUrl,
     failure: failureUrl,
   });
+  if (typeof result === 'string') {
+    window.location.href = result;
+  }
 }
