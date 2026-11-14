@@ -18,6 +18,7 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { OwnerDashboardPage } from '@/pages/OwnerDashboardPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { AppwriteDiagnosticPage } from '@/pages/__diagnostics/AppwriteDiagnosticPage';
+import { AppwritePingPage } from '@/pages/__diagnostics/AppwritePingPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
 import { OtpVerifyPage } from '@/pages/OtpVerifyPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -56,6 +57,7 @@ export default function App() {
             {import.meta.env.DEV && (
               <Route path="__diagnostics/appwrite" element={<AppwriteDiagnosticPage />} />
             )}
+            <Route path="__diagnostics/appwrite-ping" element={<AppwritePingPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
