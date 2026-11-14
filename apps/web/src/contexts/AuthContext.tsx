@@ -4,17 +4,18 @@ import {
   registerUser,
   loginUser,
   logoutUser,
-  sendVerificationEmail,
   verifyEmail,
   sendPasswordReset,
   resetPassword,
   sendEmailVerificationOTP,
   verifyEmailOTP,
+  signInWithGoogle,
   type AuthUser,
 } from '@/lib/auth';
 
 export type AuthContextType = {
   user: AuthUser | null;
+  setUser: (user: AuthUser | null) => void;
   loading: boolean;
   isAuthenticated: boolean;
   emailVerified: boolean;
@@ -35,6 +36,7 @@ export type AuthContextType = {
   ) => Promise<void>;
   sendEmailOTP: (phrase?: boolean) => Promise<string>;
   verifyEmailOTP: (userId: string, secret: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const handleResendVerification = useCallback(async () => {
-    await sendVerificationEmail();
+    await sendEmailVerificationOTP();
   }, []);
 
   const handleVerifyEmail = useCallback(
@@ -123,8 +125,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const handleSignInWithGoogle = useCallback(async () => {
+    await signInWithGoogle();
+  }, []);
+
   const value = {
     user,
+    setUser,
     loading,
     isAuthenticated: !!user,
     emailVerified: user?.emailVerification ?? false,
@@ -137,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword: handleResetPassword,
     sendEmailOTP: handleSendEmailOTP,
     verifyEmailOTP: handleVerifyEmailOTP,
+    signInWithGoogle: handleSignInWithGoogle,
   };
 
   return (

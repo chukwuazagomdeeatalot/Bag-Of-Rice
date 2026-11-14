@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loading: authLoading } = useAuth();
+  const { login, loading: authLoading, signInWithGoogle } = useAuth();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
 
   const [email, setEmail] = useState('');
@@ -18,6 +18,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +37,20 @@ export function LoginPage() {
       setError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      setError(message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -116,8 +131,13 @@ export function LoginPage() {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full" disabled>
-                  Google
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading || authLoading}
+                >
+                  {googleLoading ? 'Signing in...' : 'Google'}
                 </Button>
                 <Button variant="outline" className="w-full" disabled>
                   Apple

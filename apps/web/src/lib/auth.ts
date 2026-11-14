@@ -1,8 +1,8 @@
-import { ID } from 'appwrite';
+import { ID, OAuthProvider } from 'appwrite';
 import { account } from '@/lib/appwrite';
 import {
-  getVerifyEmailCallbackUrl,
   getResetPasswordCallbackUrl,
+  getAppUrl,
 } from '@/lib/appUrl';
 
 export type AuthUser = {
@@ -46,8 +46,8 @@ export async function registerUser(
   // Step 2: Immediately establish an email/password session with the registration credentials
   await account.createEmailPasswordSession({ email, password });
 
-  // Step 3: Only now that the session is established, send the verification email
-  await account.createEmailVerification({ url: getVerifyEmailCallbackUrl() });
+  // Step 3: Send a 6-digit OTP verification email instead of a verification link
+  await sendEmailVerificationOTP();
 
   // Step 4: Refresh the authentication context using account.get()
   const user = await account.get();
@@ -74,7 +74,7 @@ export async function logoutUser(): Promise<void> {
 }
 
 export async function sendVerificationEmail(): Promise<void> {
-  await account.createEmailVerification({ url: getVerifyEmailCallbackUrl() });
+  await sendEmailVerificationOTP();
 }
 
 export async function verifyEmail(userId: string, secret: string): Promise<void> {
@@ -100,4 +100,15 @@ export async function sendEmailVerificationOTP(phrase?: boolean): Promise<string
 
 export async function verifyEmailOTP(userId: string, secret: string): Promise<void> {
   await account.updateEmailVerificationOTP({ userId, secret });
+}
+
+export async function signInWithGoogle(): Promise<void> {
+  const appUrl = getAppUrl();
+  const successUrl = `${appUrl}/auth/google/callback`;
+  const failureUrl = `${appUrl}/auth/google/error`;
+  account.createOAuth2Session({
+    provider: OAuthProvider.Google,
+    success: successUrl,
+    failure: failureUrl,
+  });
 }

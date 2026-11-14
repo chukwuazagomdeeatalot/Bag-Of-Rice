@@ -1,52 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Brand } from '@/components/common/Brand';
 import { Card } from '@/components/common/Card';
+import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
-import { AlertCircle, Mail, Loader2 } from 'lucide-react';
+import { AlertCircle, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
-  const { user, emailVerified, verifyEmail, resendVerification, loading: authLoading } = useAuth();
+  const {
+    user,
+    emailVerified,
+    sendEmailOTP,
+    verifyEmailOTP,
+    loading: authLoading,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>('info');
+  const [code, setCode] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const userId = searchParams.get('userId');
   const secret = searchParams.get('secret');
 
-  useEffect(() => {
-    if (userId && secret) {
-      setLoading(true);
-      verifyEmail(userId, secret)
-        .then(() => {
-          setMessage('Email verified successfully! You can now sign in.');
-          setMessageType('success');
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          const msg =
-            err instanceof Error ? err.message : 'Verification failed.';
-          setMessage(msg);
-          setMessageType('error');
-          setLoading(false);
-        });
-    }
-  }, [userId, secret, verifyEmail]);
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
 
-  const handleResend = async () => {
-    if (!user) return;
+    if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+      setError('Please enter a valid 6-digit code.');
+      return;
+    }
+
+    if (!user) {
+      setError('Authentication session not found. Please sign in again.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await resendVerification();
-      setMessage('Verification email sent. Please check your inbox.');
-      setMessageType('success');
+      await verifyEmailOTP(user.id, code);
+      setSuccess(true);
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : 'Failed to send verification email.';
-      setMessage(msg);
-      setMessageType('error');
+        err instanceof Error ? err.message : 'Invalid or expired code.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    try {
+      await sendEmailOTP();
+      setError('');
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to send code.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -58,7 +71,7 @@ export function VerifyEmailPage() {
         <Card className="w-full max-w-md text-center p-10 glow">
           <Brand size="lg" className="mx-auto mb-8" />
           <Mail size={48} className="mx-auto mb-6 text-[#087C61]" />
-          <h2 className="text-2xl font-bold text-[#F7F8FC] mb-3">Email Verified</h2>
+          <h2 className="text-2xl font-bold text-[#087C61] mb-3">Email Verified</h2>
           <p className="text-[#9AA7BD] mb-8">
             Your email has been verified. You can now sign in to Bag Of Rice.
           </p>
@@ -87,70 +100,74 @@ export function VerifyEmailPage() {
             <div className="text-center mb-8">
               <Brand size="lg" className="mx-auto mb-6" />
               <h2 className="text-2xl font-bold text-[#F7F8FC] mb-3">Verify Your Email</h2>
-              <p className="text-[#9AA7BD] text-sm">
-                Please check your inbox and click the verification link we sent you.
-              </p>
             </div>
 
-            {message && (
-              <div className="mb-6 p-4 rounded-xl flex items-start gap-3">
-                {messageType === 'success' ? (
-                  <div className="w-8 h-8 rounded-full bg-[#087C61]/20 flex items-center justify-center mt-0.5">
-                    <Mail size={16} className="text-[#087C61]" />
-                  </div>
-                ) : (
-                  <AlertCircle size={18} className="mt-0.5 text-[#B52E55]" />
-                )}
-                <span className={`text-sm ${messageType === 'success' ? 'text-[#087C61]' : 'text-[#B52E55]'}`}>
-                  {message}
+            <div className="mb-6 p-4 rounded-xl border border-[#B52E55]/40 bg-[#B52E55]/20 text-[#B52E55]/90 text-sm flex items-start gap-3">
+              <AlertCircle size={18} className="mt-0.5" />
+              <span>
+                Email verification links are temporarily unavailable. Please use the
+                6-digit verification code instead.
+              </span>
+            </div>
+
+            {userId && secret && (
+              <div className="mb-6 p-4 rounded-xl border border-[#B52E55]/40 bg-[#B52E55]/20 text-[#B52E55]/90 text-sm flex items-start gap-3">
+                <AlertCircle size={18} className="mt-0.5" />
+                <span>
+                  Link-based verification is temporarily unavailable. Please use the
+                  6-digit code below instead.
                 </span>
               </div>
             )}
 
-            {loading && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 size={20} className="text-[#C58B22] animate-spin" />
-              </div>
-            )}
-
-            {!loading && userId && secret && (
-              <div className="pt-4">
-                <Button variant="outline" className="w-full" disabled={authLoading} onClick={() => {
-                  // Already handled in useEffect
-                }}>
-                  Verifying...
-                </Button>
-              </div>
-            )}
-
-            {!loading && (!userId || !secret) && (
-              <>
-                <p className="text-[0.8rem] text-[#9AA7BD] mb-6 text-center">
-                  Didn't receive the email? Request a new one.
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
+            {!success && (
+              <form onSubmit={handleOtpSubmit} className="space-y-5">
+                <Input
+                  label="Verification Code"
+                  placeholder="000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  leftIcon={<Mail size={18} className="text-[#9AA7BD]/70" />}
+                  maxLength={6}
+                  required
                   disabled={loading || authLoading}
-                  onClick={handleResend}
-                >
-                  {loading ? 'Sending...' : 'Resend Verification Email'}
+                  autoComplete="one-time-code"
+                />
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
+                  {loading ? 'Verifying...' : 'Verify Code'}
                 </Button>
 
-                {user && (
-                  <div className="mt-6 pt-6 border-t border-[#1E3A5C]/30">
-                    <p className="text-[0.8rem] text-[#9AA7BD] mb-4 text-center">
-                      Prefer a 6-digit code?{' '}
-                      <Link
-                        to="/verify-email/otp"
-                        className="text-[#00D5FF] hover:text-[#F7F8FC] font-medium transition-colors"
-                      >
-                        Verify with code
-                      </Link>
-                    </p>
+                {error && (
+                  <div className="mb-4 p-3 rounded-xl border border-[#B52E55]/40 bg-[#B52E55]/10 text-[#B52E55]/90 text-sm flex items-start gap-3">
+                    <AlertCircle size={16} className="mt-0.5" />
+                    <span>{error}</span>
                   </div>
                 )}
-              </>
+
+                <p className="mt-6 text-center text-[0.8rem] text-[#9AA7BD]">
+                  Didn't receive the code?{' '}
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={loading || authLoading}
+                    className="text-[#00D5FF] hover:text-[#F7F8FC] font-medium transition-colors"
+                  >
+                    {loading ? 'Sending...' : 'Resend code'}
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {success && (
+              <div className="text-center">
+                <Mail size={48} className="mx-auto mb-6 text-[#087C61]" />
+                <h2 className="text-2xl font-bold text-[#F7F8FC] mb-3">Email Verified</h2>
+                <p className="text-[#9AA7BD] text-sm mb-8">
+                  Your email has been verified. You can now sign in.
+                </p>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/login">Sign in</Link>
+                </Button>
+              </div>
             )}
 
             <p className="mt-8 text-center text-[0.8rem] text-[#9AA7BD]">

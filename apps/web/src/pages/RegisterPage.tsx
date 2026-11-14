@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, loading: authLoading } = useAuth();
+  const { register, loading: authLoading, signInWithGoogle } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,6 +19,7 @@ export function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +49,27 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(email, password, name.trim());
-      navigate('/verify-email');
+      navigate('/verify-email/otp');
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Registration failed. Please try again.';
       setError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      setError(message);
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -153,6 +168,26 @@ export function RegisterPage() {
                 Sign In
               </Link>
             </p>
+            <div className="mt-10 pt-8 border-t border-[#1E3A5C]/30">
+              <div className="relative flex items-center justify-center mb-6">
+                <span className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-[#1E3A5C]/40" />
+                </span>
+                <span className="px-4 text-[0.7rem] text-[#9AA7BD] uppercase tracking-widest">
+                  Or continue with
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading || authLoading}
+                >
+                  {googleLoading ? 'Signing in...' : 'Google'}
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
       </div>

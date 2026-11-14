@@ -138,7 +138,7 @@ describe('AuthContext', () => {
       emailVerification: false,
     } as any);
     vi.mocked(account.createEmailPasswordSession).mockResolvedValue({} as any);
-    vi.mocked(account.createEmailVerification).mockResolvedValue({} as any);
+    vi.mocked(account.createEmailVerificationOTP).mockResolvedValue({ userId: 'user-2' } as any);
     vi.mocked(account.get).mockResolvedValue({
       $id: 'user-2',
       email: 'new@example.com',
@@ -200,10 +200,10 @@ describe('Auth utility functions - ordering guarantees', () => {
     vi.restoreAllMocks();
   });
 
-  it('registration calls account.create BEFORE createEmailPasswordSession BEFORE createEmailVerification', async () => {
+  it('registration calls account.create BEFORE createEmailPasswordSession BEFORE sendEmailVerificationOTP', async () => {
     const createMock = vi.mocked(account.create);
     const sessionMock = vi.mocked(account.createEmailPasswordSession);
-    const verificationMock = vi.mocked(account.createEmailVerification);
+    const otpMock = vi.mocked(account.createEmailVerificationOTP);
     const getMock = vi.mocked(account.get);
 
     createMock.mockResolvedValue({
@@ -213,7 +213,7 @@ describe('Auth utility functions - ordering guarantees', () => {
       emailVerification: false,
     } as any);
     sessionMock.mockResolvedValue({} as any);
-    verificationMock.mockResolvedValue({} as any);
+    otpMock.mockResolvedValue({ userId: 'user-1' } as any);
     getMock.mockResolvedValue({
       $id: 'user-1',
       email: 'test@example.com',
@@ -225,26 +225,26 @@ describe('Auth utility functions - ordering guarantees', () => {
 
     expect(createMock).toHaveBeenCalledTimes(1);
     expect(sessionMock).toHaveBeenCalledTimes(1);
-    expect(verificationMock).toHaveBeenCalledTimes(1);
+    expect(otpMock).toHaveBeenCalledTimes(1);
     expect(getMock).toHaveBeenCalledTimes(1);
 
-    // Verify ordering: create -> session -> verification -> get
+    // Verify ordering: create -> session -> otp -> get
     const createCall = createMock.mock.invocationCallOrder[0];
     const sessionCall = sessionMock.mock.invocationCallOrder[0];
-    const verificationCall = verificationMock.mock.invocationCallOrder[0];
+    const otpCall = otpMock.mock.invocationCallOrder[0];
     const getCall = getMock.mock.invocationCallOrder[0];
 
     expect(createCall).toBeLessThan(sessionCall);
-    expect(sessionCall).toBeLessThan(verificationCall);
-    expect(verificationCall).toBeLessThan(getCall);
+    expect(sessionCall).toBeLessThan(otpCall);
+    expect(otpCall).toBeLessThan(getCall);
   });
 
-  it('registration calls session creation BEFORE verification email', async () => {
+  it('registration calls session creation BEFORE verification OTP', async () => {
     const sessionMock = vi.mocked(account.createEmailPasswordSession);
-    const verificationMock = vi.mocked(account.createEmailVerification);
+    const otpMock = vi.mocked(account.createEmailVerificationOTP);
 
     sessionMock.mockResolvedValue({} as any);
-    verificationMock.mockResolvedValue({} as any);
+    otpMock.mockResolvedValue({ userId: 'user-1' } as any);
 
     vi.mocked(account.create).mockResolvedValue({
       $id: 'user-1',
@@ -267,12 +267,10 @@ describe('Auth utility functions - ordering guarantees', () => {
       duration: undefined,
     });
 
-    expect(verificationMock).toHaveBeenCalledWith({
-      url: expect.stringContaining('/verify-email'),
-    });
+    expect(otpMock).toHaveBeenCalledTimes(1);
 
     expect(sessionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      verificationMock.mock.invocationCallOrder[0],
+      otpMock.mock.invocationCallOrder[0],
     );
   });
 
@@ -284,13 +282,13 @@ describe('Auth utility functions - ordering guarantees', () => {
       emailVerification: false,
     } as any);
     vi.mocked(account.createEmailPasswordSession).mockRejectedValue(new Error('Session failed'));
-    vi.mocked(account.createEmailVerification).mockResolvedValue({} as any);
+    vi.mocked(account.createEmailVerificationOTP).mockResolvedValue({ userId: 'user-1' } as any);
 
     await expect(
       registerUser('test@example.com', 'password123', 'Test User'),
     ).rejects.toThrow('Session failed');
 
-    expect(vi.mocked(account.createEmailVerification)).not.toHaveBeenCalled();
+    expect(vi.mocked(account.createEmailVerificationOTP)).not.toHaveBeenCalled();
   });
 
   it('existing users can sign in and resend verification', async () => {
@@ -301,7 +299,7 @@ describe('Auth utility functions - ordering guarantees', () => {
       emailVerification: false,
     } as any);
     vi.mocked(account.createEmailPasswordSession).mockResolvedValue({} as any);
-    vi.mocked(account.createEmailVerification).mockResolvedValue({} as any);
+    vi.mocked(account.createEmailVerificationOTP).mockResolvedValue({ userId: 'user-1' } as any);
 
     const { loginUser, sendVerificationEmail } = await import('@/lib/auth');
 
@@ -313,9 +311,7 @@ describe('Auth utility functions - ordering guarantees', () => {
       password: 'password123',
       duration: undefined,
     });
-    expect(vi.mocked(account.createEmailVerification)).toHaveBeenCalledWith({
-      url: expect.stringContaining('/verify-email'),
-    });
+    expect(vi.mocked(account.createEmailVerificationOTP)).toHaveBeenCalledTimes(1);
   });
 
   it('authentication state is refreshed via account.get() after login through handleLogin', async () => {
@@ -382,7 +378,7 @@ describe('Auth utility functions', () => {
       emailVerification: false,
     } as any);
     vi.mocked(account.createEmailPasswordSession).mockResolvedValue({} as any);
-    vi.mocked(account.createEmailVerification).mockResolvedValue({} as any);
+    vi.mocked(account.createEmailVerificationOTP).mockResolvedValue({ userId: 'user-1' } as any);
     vi.mocked(account.get).mockResolvedValue({
       $id: 'user-1',
       email: 'test@example.com',
@@ -447,14 +443,14 @@ describe('Auth utility functions', () => {
     });
   });
 
-  it('sendVerificationEmail calls account.createEmailVerification', async () => {
-    vi.mocked(account.createEmailVerification).mockResolvedValue({} as any);
+  it('sendVerificationEmail calls account.createEmailVerificationOTP', async () => {
+    vi.mocked(account.createEmailVerificationOTP).mockResolvedValue({
+      userId: 'user-1',
+    } as any);
 
     await sendVerificationEmail();
 
-    expect(vi.mocked(account.createEmailVerification)).toHaveBeenCalledWith({
-      url: expect.stringContaining('/verify-email'),
-    });
+    expect(vi.mocked(account.createEmailVerificationOTP)).toHaveBeenCalledTimes(1);
   });
 
   it('verifyEmail calls account.updateEmailVerification', async () => {
